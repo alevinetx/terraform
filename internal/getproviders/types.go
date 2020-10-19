@@ -422,27 +422,24 @@ func VersionConstraintsString(spec VersionConstraints) string {
 			b.WriteString("??? ")
 		}
 
+		// The parser allows writing abbreviated versions (such as ~> 2) which
+		// end up being represented in memory with trailing unconstrained parts
+		// (for example ~> 2.*).  That's not really any different than writing
+		// the constrained-to-zero version (like 2.0) and so we'll prefer that
+		// in our serialization in order to be clearer about how we understood
+		// the version constraint.
+		boundary := sel.Boundary.ConstrainToZero()
 		if sel.Operator == constraints.OpGreaterThanOrEqualMinorOnly {
 			// The minor-pessimistic syntax uses only two version components.
-			if sel.Boundary.Minor.Unconstrained {
-				// The parser allows writing ~> 2, which ends up being
-				// represented in memory as ~> 2.* because the minor
-				// version is unconstrained, but that's not really any
-				// different than saying 2.0 and so we'll prefer that in
-				// our serialization in order to be clearer about how we
-				// understood the version constraint.
-				fmt.Fprintf(&b, "%s.0", sel.Boundary.Major)
-			} else {
-				fmt.Fprintf(&b, "%s.%s", sel.Boundary.Major, sel.Boundary.Minor)
-			}
+			fmt.Fprintf(&b, "%s.%s", boundary.Major, boundary.Minor)
 		} else {
-			fmt.Fprintf(&b, "%s.%s.%s", sel.Boundary.Major, sel.Boundary.Minor, sel.Boundary.Patch)
+			fmt.Fprintf(&b, "%s.%s.%s", boundary.Major, boundary.Minor, boundary.Patch)
 		}
 		if sel.Boundary.Prerelease != "" {
-			b.WriteString("-" + sel.Boundary.Prerelease)
+			b.WriteString("-" + boundary.Prerelease)
 		}
 		if sel.Boundary.Metadata != "" {
-			b.WriteString("+" + sel.Boundary.Metadata)
+			b.WriteString("+" + boundary.Metadata)
 		}
 	}
 	return b.String()
